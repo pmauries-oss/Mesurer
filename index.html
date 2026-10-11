@@ -107,6 +107,7 @@ input[type=number]{width:100%;font:inherit;font-size:1.05rem;padding:11px 12px;b
           <div class="big acc" id="haut">--<small>m</small></div>
         </div>
       </div>
+      <div class="note acc" id="detail">&nbsp;</div>
       <div class="msg" id="msg1"></div>
       <div class="btns">
         <button class="btn" id="capBase" disabled>1. Viser le pied, mesurer</button>
@@ -146,6 +147,9 @@ input[type=number]{width:100%;font:inherit;font-size:1.05rem;padding:11px 12px;b
 (function(){
   var $ = function(id){return document.getElementById(id)};
   var fmt = function(v,d){return v.toFixed(d===undefined?1:d).replace('.',',')};
+  var mcm = function(v){var m=Math.floor(v),c=Math.round((v-m)*100); if(c===100){m++;c=0;} return m+' m '+(c<10?'0':'')+c+' cm';};
+  var Hval = null;
+  function detail(){ var t=[]; if(distM!==null) t.push('Distance : '+mcm(distM)); if(Hval!==null) t.push('Hauteur : '+mcm(Hval)); $('detail').textContent = t.length? t.join('  |  ') : '\u00a0'; }
 
   /* ---------- Onglets ---------- */
   function tab(n){
@@ -206,7 +210,7 @@ input[type=number]{width:100%;font:inherit;font-size:1.05rem;padding:11px 12px;b
     if(a < 3){ setMsg("Visez plus bas : le pied doit être à au moins 3° sous l'horizon."); return; }
     var h = eye();
     distM = h / Math.tan(a*Math.PI/180);
-    $('dist').innerHTML = fmt(distM)+'<small>m</small>';
+    $('dist').innerHTML = fmt(distM,2)+'<small>m</small>'; Hval=null; detail();
     base = a; setMsg("Distance mesurée. Visez maintenant le sommet.", true);
     $('haut').innerHTML = '--<small>m</small>';
   };
@@ -216,12 +220,12 @@ input[type=number]{width:100%;font:inherit;font-size:1.05rem;padding:11px 12px;b
     if(elev===null) return;
     if(elev <= 0){ setMsg("Visez au-dessus de l'horizon pour le sommet."); return; }
     var H = eye() + distM * Math.tan(elev*Math.PI/180);
-    $('haut').innerHTML = fmt(H)+'<small>m</small>';
-    setMsg("Hauteur estimée, à ±5 % dans de bonnes conditions.", true);
+    Hval = H; $('haut').innerHTML = fmt(H,2)+'<small>m</small>'; detail();
+    setMsg("Hauteur estimée. Les centimètres sont affichés mais la précision réelle est de l\u2019ordre de 5 %.", true);
   };
 
   $('reset1').onclick = function(){
-    distM=null; base=null;
+    distM=null; base=null; Hval=null; detail();
     $('dist').innerHTML='--<small>m</small>'; $('haut').innerHTML='--<small>m</small>'; setMsg('');
   };
 
