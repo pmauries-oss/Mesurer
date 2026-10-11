@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#c6281c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mesure">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Mesure distance</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#eef1f3; --card:#ffffff; --ink:#14212b; --muted:#5b6b78; --line:#d3dbe1;
+  --accent:#c6281c; --accent-ink:#ffffff; --ok:#1d7a46; --warn:#a85d00;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10181f; --card:#192530; --ink:#e8eef2; --muted:#93a4b1; --line:#2b3b48;
+    --accent:#ee5a4d; --accent-ink:#10181f; --ok:#4cc27f; --warn:#e8a547;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10181f; --card:#192530; --ink:#e8eef2; --muted:#93a4b1; --line:#2b3b48;
+  --accent:#ee5a4d; --accent-ink:#10181f; --ok:#4cc27f; --warn:#e8a547;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  line-height:1.4;-webkit-text-size-adjust:100%}
+main{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+h1{font-size:1.35rem;margin:4px 0 14px;letter-spacing:-.01em}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--line);border-radius:12px;padding:3px;gap:3px;margin-bottom:14px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;padding:11px 8px;border-radius:10px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.panel[hidden]{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.view{position:relative;height:210px;border-radius:12px;overflow:hidden;background:#0b1217;margin-bottom:12px}
+.view video{width:100%;height:100%;object-fit:cover;display:none}
+.view.live video{display:block}
+.cross{position:absolute;inset:0;pointer-events:none}
+.cross::before,.cross::after{content:"";position:absolute;background:#fff;opacity:.9;mix-blend-mode:difference}
+.cross::before{left:50%;top:0;bottom:0;width:1px}
+.cross::after{top:50%;left:0;right:0;height:1px}
+.angle{position:absolute;left:10px;bottom:8px;color:#fff;font-weight:700;font-size:1.3rem;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000}
+.hint{position:absolute;right:10px;bottom:10px;color:#cdd8df;font-size:.78rem;text-align:right;max-width:55%}
+.big{font-size:2.8rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.big small{font-size:1.1rem;font-weight:600;color:var(--muted);letter-spacing:0;margin-left:4px}
+.lbl{color:var(--muted);font-size:.85rem;margin-bottom:4px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:15px 14px;font:inherit;font-weight:700;font-size:1rem;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn[disabled]{opacity:.45}
+.btns{display:grid;gap:10px;margin-top:10px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+input[type=number]{width:100%;font:inherit;font-size:1.05rem;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.note{font-size:.82rem;color:var(--muted);margin:8px 2px 0}
+.msg{font-size:.9rem;margin-top:8px;color:var(--warn)}
+.msg.ok{color:var(--ok)}
+.steps{margin:0;padding-left:1.1rem;color:var(--muted);font-size:.88rem}
+.acc{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<main>
+  <h1>Mesure de distance</h1>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t1" aria-selected="true" aria-controls="p1">Pied / hauteur</button>
+    <button role="tab" id="t2" aria-selected="false" aria-controls="p2">GPS à pied</button>
+  </div>
+
+  <!-- INCLINOMETRE -->
+  <section class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+    <div class="view" id="view">
+      <video id="cam" playsinline muted></video>
+      <div class="cross"></div>
+      <div class="angle" id="angleLive">--°</div>
+      <div class="hint" id="hint">Tenez l'iPhone à la verticale, dos tourné vers la cible.</div>
+    </div>
+
+    <div class="btns" style="margin:0 0 12px">
+      <button class="btn alt" id="start">Activer capteurs et caméra</button>
+    </div>
+
+    <div class="card">
+      <label for="eye">Hauteur de l'iPhone au sol (m)</label>
+      <input type="number" id="eye" inputmode="decimal" step="0.01" min="0.5" max="2.5" value="1.60">
+      <p class="note">Mesurez de l'œil ou de l'iPhone jusqu'au sol, bien droit. L'erreur sur cette valeur se répercute sur la distance.</p>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="lbl">Distance au pied</div>
+          <div class="big acc" id="dist">--<small>m</small></div>
+        </div>
+        <div>
+          <div class="lbl">Hauteur</div>
+          <div class="big acc" id="haut">--<small>m</small></div>
+        </div>
+      </div>
+      <div class="msg" id="msg1"></div>
+      <div class="btns">
+        <button class="btn" id="capBase" disabled>1. Viser le pied, mesurer</button>
+        <button class="btn" id="capTop" disabled>2. Viser le sommet, mesurer</button>
+        <button class="btn alt" id="reset1">Recommencer</button>
+        <button class="btn alt" id="zero" disabled>Calibrer : viser l'horizon</button>
+      </div>
+      <p class="note">Le pied doit être visible au sol, sur terrain plat. Visez à plus de 5° sous l'horizon pour une bonne précision.</p>
+    </div>
+  </section>
+
+  <!-- GPS -->
+  <section class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+    <div class="card">
+      <div class="lbl">Distance en ligne droite</div>
+      <div class="big acc" id="gpsDist">--<small>m</small></div>
+      <div class="msg" id="gpsMsg"></div>
+      <div class="note acc" id="gpsAcc">Précision : --</div>
+      <div class="btns">
+        <button class="btn" id="gpsA">1. Marquer le départ</button>
+        <button class="btn" id="gpsB" disabled>2. Marquer l'arrivée</button>
+        <button class="btn alt" id="gpsReset">Recommencer</button>
+      </div>
+      <p class="note">À l'extérieur, au-delà d'une quinzaine de mètres. Attendez que la précision affichée soit bonne avant de marquer chaque point.</p>
+    </div>
+    <div class="card">
+      <ol class="steps">
+        <li>Placez-vous au point de départ et marquez-le.</li>
+        <li>Marchez jusqu'au point d'arrivée.</li>
+        <li>Marquez l'arrivée : la distance s'affiche.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  var $ = function(id){return document.getElementById(id)};
+  var fmt = function(v,d){return v.toFixed(d===undefined?1:d).replace('.',',')};
+
+  /* ---------- Onglets ---------- */
+  function tab(n){
+    $('t1').setAttribute('aria-selected', n===1);
+    $('t2').setAttribute('aria-selected', n===2);
+    $('p1').hidden = n!==1; $('p2').hidden = n!==2;
+  }
+  $('t1').onclick=function(){tab(1)}; $('t2').onclick=function(){tab(2)};
+
+  /* ---------- Inclinomètre ---------- */
+  var elev = null, offset = 0, base = null;   // elev : angle de site en degrés (+ haut, - bas)
+  var distM = null, started = false, smooth = null;
+
+  function onOrient(e){
+    if(e.beta===null || e.beta===undefined) return;
+    var raw = e.beta - 90;                   // iPhone vertical = 0°
+    smooth = smooth===null ? raw : smooth*0.8 + raw*0.2;
+    elev = smooth - offset;
+    $('angleLive').textContent = (elev>=0?'+':'') + fmt(elev,1) + '°';
+  }
+
+  function enable(){
+    var go = function(){
+      window.addEventListener('deviceorientation', onOrient, true);
+      started = true;
+      ['capBase','capTop','zero'].forEach(function(i){$(i).disabled=false});
+      $('start').textContent = 'Capteurs actifs';
+      $('start').disabled = true;
+    };
+    var D = window.DeviceOrientationEvent;
+    if(D && typeof D.requestPermission === 'function'){
+      D.requestPermission().then(function(r){
+        if(r==='granted') go(); else $('msg1').textContent = "Accès aux capteurs refusé. Autorisez-le dans les réglages de Safari.";
+      }).catch(function(){ $('msg1').textContent = "Impossible d'activer les capteurs."; });
+    } else { go(); }
+
+    try{
+      if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+        navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false})
+        .then(function(s){ var v=$('cam'); v.srcObject=s; v.play(); $('view').classList.add('live'); $('hint').style.display='none'; })
+        .catch(function(){ /* sans caméra : viser le long de la tranche haute */ $('hint').textContent="Caméra indisponible : visez avec la tranche haute de l'iPhone."; });
+      }
+    }catch(err){}
+  }
+  $('start').onclick = enable;
+
+  function eye(){ var h = parseFloat(String($('eye').value).replace(',','.')); return isNaN(h)?1.6:h; }
+  function setMsg(t,ok){ var m=$('msg1'); m.textContent=t||''; m.className='msg'+(ok?' ok':''); }
+
+  $('zero').onclick = function(){
+    if(smooth===null) return;
+    offset = smooth; setMsg("Horizon calibré à 0°.", true);
+  };
+
+  $('capBase').onclick = function(){
+    if(elev===null){ setMsg("Aucune mesure d'angle reçue. Bougez l'iPhone."); return; }
+    var a = -elev;
+    if(a < 3){ setMsg("Visez plus bas : le pied doit être à au moins 3° sous l'horizon."); return; }
+    var h = eye();
+    distM = h / Math.tan(a*Math.PI/180);
+    $('dist').innerHTML = fmt(distM)+'<small>m</small>';
+    base = a; setMsg("Distance mesurée. Visez maintenant le sommet.", true);
+    $('haut').innerHTML = '--<small>m</small>';
+  };
+
+  $('capTop').onclick = function(){
+    if(distM===null){ setMsg("Mesurez d'abord la distance au pied."); return; }
+    if(elev===null) return;
+    if(elev <= 0){ setMsg("Visez au-dessus de l'horizon pour le sommet."); return; }
+    var H = eye() + distM * Math.tan(elev*Math.PI/180);
+    $('haut').innerHTML = fmt(H)+'<small>m</small>';
+    setMsg("Hauteur estimée, à ±5 % dans de bonnes conditions.", true);
+  };
+
+  $('reset1').onclick = function(){
+    distM=null; base=null;
+    $('dist').innerHTML='--<small>m</small>'; $('haut').innerHTML='--<small>m</small>'; setMsg('');
+  };
+
+  /* ---------- GPS ---------- */
+  var A=null, B=null, watchId=null, last=null;
+
+  function hav(p,q){
+    var R=6371008.8, r=Math.PI/180;
+    var dLat=(q.lat-p.lat)*r, dLon=(q.lon-p.lon)*r;
+    var a=Math.sin(dLat/2)**2 + Math.cos(p.lat*r)*Math.cos(q.lat*r)*Math.sin(dLon/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+
+  function watch(){
+    if(watchId!==null) return;
+    if(!navigator.geolocation){ $('gpsMsg').textContent="Géolocalisation indisponible."; return; }
+    watchId = navigator.geolocation.watchPosition(function(p){
+      last = {lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy};
+      $('gpsAcc').textContent = 'Précision : ± ' + fmt(last.acc,0) + ' m';
+      if(A && !B){ $('gpsDist').innerHTML = fmt(hav(A,last),0)+'<small>m</small>'; }
+    }, function(err){
+      $('gpsMsg').textContent = err.code===1 ? "Position refusée. Autorisez-la dans les réglages de Safari." : "Position indisponible pour le moment.";
+    }, {enableHighAccuracy:true, maximumAge:0, timeout:20000});
+  }
+
+  $('gpsA').onclick = function(){
+    watch();
+    if(!last){ $('gpsMsg').textContent="Recherche de la position… réessayez dans quelques secondes."; return; }
+    A = {lat:last.lat, lon:last.lon, acc:last.acc}; B=null;
+    $('gpsMsg').textContent="Départ marqué. Marchez jusqu'à l'arrivée.";
+    $('gpsMsg').className='msg ok';
+    $('gpsB').disabled=false;
+    $('gpsDist').innerHTML='0<small>m</small>';
+  };
+  $('gpsB').onclick = function(){
+    if(!A||!last) return;
+    B = {lat:last.lat, lon:last.lon, acc:last.acc};
+    var d = hav(A,B), err = Math.sqrt(A.acc*A.acc + B.acc*B.acc);
+    $('gpsDist').innerHTML = fmt(d,0)+'<small>m</small>';
+    $('gpsMsg').textContent = "Incertitude estimée : ± " + fmt(err,0) + " m.";
+    $('gpsMsg').className = 'msg' + (d>2*err?' ok':'');
+  };
+  $('gpsReset').onclick = function(){
+    A=B=null; $('gpsB').disabled=true;
+    $('gpsDist').innerHTML='--<small>m</small>'; $('gpsMsg').textContent='';
+  };
+  $('t2').addEventListener('click', watch);
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
